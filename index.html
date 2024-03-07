@@ -1,0 +1,202 @@
+
+
+
+
+
+
+
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+    <form action="" onsubmit="saveTomySql(event)">
+        <label>Books</label>
+        <input type="text" name="Bookname" />
+        <button>Add Item</button>
+    </form>
+
+    <ol id="list"></ol>
+    <h2>returnd book</h2>
+    <ul id="returnBook"></ul>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.19.0/axios.min.js"></script>
+    <script>
+       
+        function fetchBookData() {
+            axios
+                .get("/bookdata")
+                .then((response) => {
+                    const bookData = response.data;
+                    // Render the fetched data on the screen
+                    console.log(bookData);
+                    showOnScreen(bookData);
+                })
+                .catch((error) => {
+                    console.error('Error fetching book data:', error);
+                });
+        }
+        function saveTomySql(event) {
+            event.preventDefault();
+            const currentDate = new Date();
+            // const currentdate = currentDate.toISOString().replace('T', ' ').replace('Z', '');
+            console.log(currentDate);
+            const currDate = new Date();
+            const onehrlateDate = currDate.setHours(currDate.getHours() + 1);
+
+            // Convert the date to ISO 8601 format and remove 'T' and 'Z' characters
+
+
+
+            const Bookname = event.target.Bookname.value;
+
+
+            const obj = {
+                Bookname: Bookname,
+                currDate: currentDate,
+                onehrlateDate: onehrlateDate
+
+            };
+
+            axios
+                .post(
+                    "/book",
+                    obj
+                )
+                .then((res) => {
+                    console.log(res);
+                    // showOnScreen(res.data);  
+                    // fetchparticularBookData(res)
+                    fetchBookData()
+                    // console.log(res);
+                })
+                .catch((err) => {
+                    console.log('o', err);
+                });
+            // localStorage.setItem(obj.name, JSON.stringify(obj));
+
+            // showOnScreen(obj);
+          
+        }
+
+      
+
+        function returnBook(id, element, penality, bookName, currdate, onehrlatedate) {
+
+            element.parentNode.innerHTML = `<div><label>${penality}</label><button onclick="payFine(${id}, ${penality},'${bookName}','${currdate}','${onehrlatedate}')">Pay fine</button>`;
+
+        }
+
+        function payFine(id, penality, bookName, currdate, onehrlatedate) {
+            const paymentDetails = {
+                id: id,
+                bookName: bookName,
+                currdate: currdate,
+                onehrlatedate: onehrlatedate,
+                penalty: penality
+            };
+
+            let storedBooks = localStorage.getItem('books'); // Retrieve the stored data
+            let updatedBooks = [];
+
+            if (storedBooks) {
+                // If data exists, parse it into an array
+                try {
+                    updatedBooks = JSON.parse(storedBooks);
+                    if (!Array.isArray(updatedBooks)) {
+                        // If it's not an array, convert it into an array with the existing data
+                        updatedBooks = [updatedBooks];
+                    }
+                } catch (error) {
+                    console.error('Error parsing stored data:', error);
+                }
+            }
+
+            updatedBooks.push(paymentDetails); // Add the new payment details
+
+            localStorage.setItem('books', JSON.stringify(updatedBooks)); // Store the updated array back to localStorage
+
+
+            axios
+                .delete(`/bookdata/${id}`)
+                .then((res) => {
+                    console.log('succesfully deleted');
+                    fetchlocalstorage()
+                })
+                .catch((err) => {
+                    console.error('Error returning book:', err);
+                });
+
+                // location.reload();
+                // fetchBookData
+        }
+        function showOnScreen(obj) {
+            let ele = document.getElementById("list");
+            const currentDate = new Date();
+            console.log(currentDate);
+            obj.forEach(book => {
+                let penalty = 0;
+
+                console.log(book);
+                const differenceInMilliseconds = currentDate - new Date(book.onehrlatedate);
+                console.log(differenceInMilliseconds / (1000 * 60));
+                const differenceInHours = differenceInMilliseconds / (1000 * 60 * 60);
+                console.log(differenceInHours);
+
+                // Increase penalty by 10 if the difference in hours is more than 1
+                if (differenceInHours > 1) {
+                    penalty += 10 * Math.floor(differenceInHours);
+                }
+                // let bookN = String(book.bookName);                console.log(bookN);
+                ele.innerHTML +=
+                    `<div id=${book.id}> <li>${book.bookName}-${book.currdate}-${book.onehrlatedate}</li>
+                     <h4>Penalty: ${penalty}</h4>
+                     
+                     <button onclick="returnBook(${book.id}, this ,${penalty},'${book.bookName}','${book.currdate}','${book.onehrlatedate}')">Return Book</button>
+                    </div>`;
+            });
+
+        }
+
+        
+
+
+        function fetchlocalstorage() {
+    const storedPaymentDetails = JSON.parse(localStorage.getItem('books'));
+
+    // Clear the existing content of the returnBookList
+    const returnBookList = document.getElementById("returnBook");
+    returnBookList.innerHTML = "";
+
+    // Check if storedPaymentDetails is an array or a single object
+    if (Array.isArray(storedPaymentDetails)) {
+        // If it's an array, iterate through each payment detail object
+        storedPaymentDetails.forEach(paymentDetail => {
+            const listItem = document.createElement('li');
+            listItem.textContent = `${paymentDetail.bookName} - ${paymentDetail.currdate} - ${paymentDetail.onehrlatedate} - Penalty: ${paymentDetail.penalty}`;
+            returnBookList.appendChild(listItem);
+        });
+    } else if (storedPaymentDetails) {
+        // If it's a single object, create a list item for that object
+        const listItem = document.createElement('li');
+        listItem.textContent = `${storedPaymentDetails.bookName} - ${storedPaymentDetails.currdate} - ${storedPaymentDetails.onehrlatedate} - Penalty: ${storedPaymentDetails.penalty}`;
+        returnBookList.appendChild(listItem);
+    }
+}
+
+        fetchlocalstorage()
+        fetchBookData();
+    </script>
+</body>
+
+</html>
